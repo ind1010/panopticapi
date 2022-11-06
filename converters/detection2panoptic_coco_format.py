@@ -43,7 +43,7 @@ def convert_detection_to_panoptic_coco_format_single_core(
                                                                  working_idx,
                                                                  len(img_ids)))
         img = coco_detection.loadImgs(int(img_id))[0]
-        pan_format = np.zeros((img['height'], img['width'], 3))
+        pan_format = np.zeros((img['height'], img['width'], 3), dtype=np.uint8)
         overlaps_map = np.zeros((img['height'], img['width']))
 
         anns_ids = coco_detection.getAnnIds(img_id)
