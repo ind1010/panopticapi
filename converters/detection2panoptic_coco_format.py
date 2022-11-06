@@ -44,13 +44,13 @@ def convert_detection_to_panoptic_coco_format_single_core(
                                                                  len(img_ids)))
         img = coco_detection.loadImgs(int(img_id))[0]
         pan_format = np.zeros((img['height'], img['width'], 3), dtype=np.uint8)
-        overlaps_map = np.zeros((img['height'], img['width']))
+        overlaps_map = np.zeros((img['height'], img['width']), dtype=np.uint32)
 
         anns_ids = coco_detection.getAnnIds(img_id)
         anns = coco_detection.loadAnns(anns_ids)
 
         panoptic_record = {}
-        panoptic_record['image_id'] = img_id
+        panoptic_record['image_id'] = int(img_id)
         file_name = '{}.png'.format(img['file_name'].rsplit('.')[0])
         panoptic_record['file_name'] = file_name
         segments_info = []
@@ -73,7 +73,6 @@ def convert_detection_to_panoptic_coco_format_single_core(
                 encoded_ground_truth = COCOmask.encode(fortran_ground_truth_binary_mask)
                 ground_truth_area = COCOmask.area(encoded_ground_truth)
                 ground_truth_bounding_box = COCOmask.toBbox(encoded_ground_truth)
-
                 ann['bbox'] = ground_truth_bounding_box.tolist()
                 ann['area'] = ground_truth_area.tolist()
             
@@ -95,7 +94,6 @@ def convert_detection_to_panoptic_coco_format_single_core(
         ground_truth_area = COCOmask.area(encoded_ground_truth)
         ground_truth_bounding_box = COCOmask.toBbox(encoded_ground_truth)
         ann = segments_info[0].copy()
-        ann['color'] = color
         ann['bbox'] = ground_truth_bounding_box.tolist()
         ann['area'] = ground_truth_area.tolist()
         pan_format[non_archaeo_mask == 1] = color
