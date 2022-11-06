@@ -87,6 +87,7 @@ def convert_detection_to_panoptic_coco_format_single_core(
             raise Exception("Segments for image {} overlap each other.".format(img_id))
 
         # add nonarchaeo background semantic segmentation annotation
+        ann['category_id'] = 2
         segment_id, color = id_generator.get_id_and_color(2)
         non_archaeo_mask = (1 - overlaps_map)
         fortran_ground_truth_binary_mask = np.asfortranarray(non_archaeo_mask)
@@ -97,7 +98,6 @@ def convert_detection_to_panoptic_coco_format_single_core(
         ann['color'] = color
         ann['bbox'] = ground_truth_bounding_box.tolist()
         ann['area'] = ground_truth_area.tolist()
-        ann['category_id'] = 2
         pan_format[non_archaeo_mask == 1] = color
         ann['id'] = segment_id
         segments_info.append(ann)
@@ -151,7 +151,7 @@ def convert_detection_to_panoptic_coco_format(input_json_file,
             "id": 2,
             "name": "4.4",
             "supercategory": "",
-            "isthing": 1,
+            "isthing": "1",
             "color": "[0,0,255]",
             "metadata": {},
             "creator": "indannotate3",
