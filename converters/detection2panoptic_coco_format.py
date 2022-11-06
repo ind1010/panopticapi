@@ -15,6 +15,9 @@ import json
 import time
 import multiprocessing
 
+# added these imports
+from pycocotools import mask as COCOmask
+
 import PIL.Image as Image
 
 from panopticapi.utils import get_traceback, IdGenerator, save_json
@@ -59,6 +62,21 @@ def convert_detection_to_panoptic_coco_format_single_core(
             segment_id, color = id_generator.get_id_and_color(ann['category_id'])
             mask = coco_detection.annToMask(ann)
             overlaps_map += mask
+            overlap_locations = (overlaps_map > 1)
+            if np.sum(overlap_locations) != 0:
+                overlaps_map -= mask
+                mask[overlap_locations] = 0
+                overlaps_map += mask
+
+                # make mask with removed overlaps
+                fortran_ground_truth_binary_mask = np.asfortranarray(mask)
+                encoded_ground_truth = COCOmask.encode(fortran_ground_truth_binary_mask)
+                ground_truth_area = COCOmask.area(encoded_ground_truth)
+                ground_truth_bounding_box = COCOmask.toBbox(encoded_ground_truth)
+
+                ann['bbox'] = ground_truth_bounding_box.tolist()
+                ann['area'] = ground_truth_area.tolist()
+            
             pan_format[mask == 1] = color
             ann.pop('segmentation')
             ann.pop('image_id')
@@ -67,6 +85,23 @@ def convert_detection_to_panoptic_coco_format_single_core(
 
         if np.sum(overlaps_map > 1) != 0:
             raise Exception("Segments for image {} overlap each other.".format(img_id))
+
+        # add nonarchaeo background semantic segmentation annotation
+        segment_id, color = id_generator.get_id_and_color(2)
+        non_archaeo_mask = (1 - overlaps_map)
+        fortran_ground_truth_binary_mask = np.asfortranarray(non_archaeo_mask)
+        encoded_ground_truth = COCOmask.encode(fortran_ground_truth_binary_mask)
+        ground_truth_area = COCOmask.area(encoded_ground_truth)
+        ground_truth_bounding_box = COCOmask.toBbox(encoded_ground_truth)
+        ann = segments_info[0].copy()
+        ann['color'] = color
+        ann['bbox'] = ground_truth_bounding_box.tolist()
+        ann['area'] = ground_truth_area.tolist()
+        ann['category_id'] = 2
+        pan_format[non_archaeo_mask == 1] = color
+        ann['id'] = segment_id
+        segments_info.append(ann)
+
         panoptic_record['segments_info'] = segments_info
         annotations_panoptic.append(panoptic_record)
 
@@ -100,8 +135,28 @@ def convert_detection_to_panoptic_coco_format(input_json_file,
     coco_detection = COCO(input_json_file)
     img_ids = coco_detection.getImgIds()
 
-    with open(categories_json_file, 'r') as f:
-        categories_list = json.load(f)
+    # removed dependence on categories file
+    # archaeos and nonarchaeos
+    categories_list = [{
+            "id": 1,
+            "name": "1.5",
+            "supercategory": "",
+            "isthing": "0",
+            "color": "#4646f9",
+            "metadata": {},
+            "creator": "indannotate3",
+            "keypoint_colors": []
+        },
+        {
+            "id": 2,
+            "name": "4.4",
+            "supercategory": "",
+            "isthing": 1,
+            "color": "#5eb5d7",
+            "metadata": {},
+            "creator": "indannotate3",
+            "keypoint_colors": []
+        }]
     categories = {category['id']: category for category in categories_list}
 
     cpu_num = multiprocessing.cpu_count()
