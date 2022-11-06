@@ -90,7 +90,7 @@ def convert_detection_to_panoptic_coco_format_single_core(
         ann['category_id'] = 2
         segment_id, color = id_generator.get_id_and_color(2)
         non_archaeo_mask = (1 - overlaps_map)
-        fortran_ground_truth_binary_mask = np.asfortranarray(non_archaeo_mask)
+        fortran_ground_truth_binary_mask = np.asfortranarray(non_archaeo_mask, dtype=np.uint8)
         encoded_ground_truth = COCOmask.encode(fortran_ground_truth_binary_mask)
         ground_truth_area = COCOmask.area(encoded_ground_truth)
         ground_truth_bounding_box = COCOmask.toBbox(encoded_ground_truth)
