@@ -1,3 +1,6 @@
+# Note
+Please refer to the original repository [here](https://github.com/cocodataset/panopticapi).
+
 # COCO 2018 Panoptic Segmentation Task API (Beta version)
 This API is an experimental version of [COCO 2018 Panoptic Segmentation Task API](http://cocodataset.org/#panoptic-2018).
 
