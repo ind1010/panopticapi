@@ -30,7 +30,7 @@ try:
 except Exception:
     raise Exception("Please install pycocotools module from https://github.com/cocodataset/cocoapi")
 
-OTHER_CLASS_ID = 183
+OTHER_CLASS_ID = 0 # originally 183 but I set num_classes to 1, but 255 means "ignore"
 
 @get_traceback
 def extract_semantic_single_core(proc_id,
@@ -135,8 +135,28 @@ def extract_semantic(input_json_file,
         print("Merging all things categories into 'other' category")
     print('\n')
 
-    with open(categories_json_file, 'r') as f:
-        categories_list = json.load(f)
+    # removed dependence on categories file
+    # archaeos and nonarchaeos
+    categories_list = [{
+            "id": 0,
+            "name": "1.5",
+            "supercategory": "",
+            "isthing": 1,
+            "color": [255,0,0],
+            "metadata": {},
+            "creator": "indannotate3",
+            "keypoint_colors": []
+        },
+        {
+            "id": 1,
+            "name": "4.4",
+            "supercategory": "",
+            "isthing": 0,
+            "color": [0,0,255],
+            "metadata": {},
+            "creator": "indannotate3",
+            "keypoint_colors": []
+        }]
     categories = {category['id']: category for category in categories_list}
 
     cpu_num = multiprocessing.cpu_count()
@@ -160,15 +180,15 @@ def extract_semantic(input_json_file,
         d_coco['annotations'] = annotations_coco_semantic_seg
         categories_coco_semantic_seg = []
         for category in categories_list:
-            if things_other and category['isthing'] == 1:
-                continue
+            # if things_other and category['isthing'] == 1:
+            #     continue
             category.pop('isthing')
             category.pop('color')
             categories_coco_semantic_seg.append(category)
-        if things_other:
-            categories_coco_semantic_seg.append({'id': OTHER_CLASS_ID,
-                                                 'name': 'other',
-                                                 'supercategory': 'other'})
+        # if things_other:
+        #     categories_coco_semantic_seg.append({'id': OTHER_CLASS_ID,
+                                                 # 'name': 'other',
+                                                 # 'supercategory': 'other'})
         d_coco['categories'] = categories_coco_semantic_seg
         save_json(d_coco, output_json_file)
 

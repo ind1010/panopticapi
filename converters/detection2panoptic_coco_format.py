@@ -34,7 +34,14 @@ except Exception:
 def convert_detection_to_panoptic_coco_format_single_core(
     proc_id, coco_detection, img_ids, categories, segmentations_folder
 ):
-    id_generator = IdGenerator(categories)
+    # added this
+    categories_dec = categories.copy()
+    for category in categories:
+        categories_dec[category]['id'] -= 1
+        categories_dec[category-1] = categories_dec[category]
+        categories_dec.pop(category)
+
+    id_generator = IdGenerator(categories_dec)
 
     annotations_panoptic = []
     for working_idx, img_id in enumerate(img_ids):
@@ -59,6 +66,7 @@ def convert_detection_to_panoptic_coco_format_single_core(
                 raise Exception('Panoptic coco categories file does not contain \
                     category with id: {}'.format(ann['category_id'])
                 )
+            ann['category_id'] = (ann['category_id'] - 1)
             segment_id, color = id_generator.get_id_and_color(ann['category_id'])
             mask = coco_detection.annToMask(ann)
             overlaps_map += mask
@@ -86,8 +94,9 @@ def convert_detection_to_panoptic_coco_format_single_core(
             raise Exception("Segments for image {} overlap each other.".format(img_id))
 
         # add nonarchaeo background semantic segmentation annotation
-        ann['category_id'] = 2
-        segment_id, color = id_generator.get_id_and_color(2)
+        nonarch_id = 1
+        ann['category_id'] = nonarch_id
+        segment_id, color = id_generator.get_id_and_color(nonarch_id)
         non_archaeo_mask = (1 - overlaps_map)
         fortran_ground_truth_binary_mask = np.asfortranarray(non_archaeo_mask, dtype=np.uint8)
         encoded_ground_truth = COCOmask.encode(fortran_ground_truth_binary_mask)
@@ -139,7 +148,7 @@ def convert_detection_to_panoptic_coco_format(input_json_file,
             "id": 1,
             "name": "1.5",
             "supercategory": "",
-            "isthing": "1",
+            "isthing": 1,
             "color": [255,0,0],
             "metadata": {},
             "creator": "indannotate3",
@@ -149,7 +158,7 @@ def convert_detection_to_panoptic_coco_format(input_json_file,
             "id": 2,
             "name": "4.4",
             "supercategory": "",
-            "isthing": "0",
+            "isthing": 0,
             "color": [0,0,255],
             "metadata": {},
             "creator": "indannotate3",
@@ -173,6 +182,9 @@ def convert_detection_to_panoptic_coco_format(input_json_file,
     with open(input_json_file, 'r') as f:
         d_coco = json.load(f)
     d_coco['annotations'] = annotations_coco_panoptic
+    # added this
+    for category in categories_list:
+        category['id'] = (category['id'] - 1)
     d_coco['categories'] = categories_list
     save_json(d_coco, output_json_file)
 
