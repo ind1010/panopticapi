@@ -34,14 +34,7 @@ except Exception:
 def convert_detection_to_panoptic_coco_format_single_core(
     proc_id, coco_detection, img_ids, categories, segmentations_folder
 ):
-    # added this
-    categories_dec = categories.copy()
-    for category in categories:
-        categories_dec[category]['id'] -= 1
-        categories_dec[category-1] = categories_dec[category]
-        categories_dec.pop(category)
-
-    id_generator = IdGenerator(categories_dec)
+    id_generator = IdGenerator(categories)
 
     annotations_panoptic = []
     for working_idx, img_id in enumerate(img_ids):
@@ -58,7 +51,7 @@ def convert_detection_to_panoptic_coco_format_single_core(
 
         panoptic_record = {}
         panoptic_record['image_id'] = int(img_id)
-        file_name = '{}.png'.format(img['file_name'].rsplit('.')[0])
+        file_name = '{}.png'.format(img['file_name'].rsplit('.')[0].rsplit('/',1)[-1]) # added forward slash delimiter
         panoptic_record['file_name'] = file_name
         segments_info = []
         for ann in anns:
@@ -66,7 +59,6 @@ def convert_detection_to_panoptic_coco_format_single_core(
                 raise Exception('Panoptic coco categories file does not contain \
                     category with id: {}'.format(ann['category_id'])
                 )
-            ann['category_id'] = (ann['category_id'] - 1)
             segment_id, color = id_generator.get_id_and_color(ann['category_id'])
             mask = coco_detection.annToMask(ann)
             overlaps_map += mask
@@ -93,7 +85,7 @@ def convert_detection_to_panoptic_coco_format_single_core(
         if np.sum(overlaps_map > 1) != 0:
             raise Exception("Segments for image {} overlap each other.".format(img_id))
 
-        # add nonarchaeo background semantic segmentation annotation
+        # added nonarchaeo background semantic segmentation annotation
         nonarch_id = 1
         segment_id, color = id_generator.get_id_and_color(nonarch_id)
         non_archaeo_mask = (1 - overlaps_map)
@@ -101,12 +93,16 @@ def convert_detection_to_panoptic_coco_format_single_core(
         encoded_ground_truth = COCOmask.encode(fortran_ground_truth_binary_mask)
         ground_truth_area = COCOmask.area(encoded_ground_truth)
         ground_truth_bounding_box = COCOmask.toBbox(encoded_ground_truth)
-        ann = segments_info[0].copy()
+        ann = {'category_id':nonarch_id}
         ann['category_id'] = nonarch_id
         ann['bbox'] = ground_truth_bounding_box.tolist()
         ann['area'] = ground_truth_area.tolist()
         pan_format[non_archaeo_mask == 1] = color
         ann['id'] = segment_id
+        ann['iscrowd'] = False
+        ann['isbbox'] = False
+        ann['width'] = 4809
+        ann['height'] = 3173
         segments_info.append(ann)
 
         panoptic_record['segments_info'] = segments_info
@@ -145,7 +141,7 @@ def convert_detection_to_panoptic_coco_format(input_json_file,
     # removed dependence on categories file
     # archaeos and nonarchaeos
     categories_list = [{
-            "id": 1,
+            "id": 0,
             "name": "1.5",
             "supercategory": "",
             "isthing": 1,
@@ -155,7 +151,7 @@ def convert_detection_to_panoptic_coco_format(input_json_file,
             "keypoint_colors": []
         },
         {
-            "id": 2,
+            "id": 1,
             "name": "4.4",
             "supercategory": "",
             "isthing": 0,
