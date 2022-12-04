@@ -178,9 +178,6 @@ def convert_detection_to_panoptic_coco_format(input_json_file,
     with open(input_json_file, 'r') as f:
         d_coco = json.load(f)
     d_coco['annotations'] = annotations_coco_panoptic
-    # added this
-    for category in categories_list:
-        category['id'] = (category['id'] - 1)
     d_coco['categories'] = categories_list
     save_json(d_coco, output_json_file)
 
